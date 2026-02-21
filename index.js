@@ -41,7 +41,7 @@ client.once("ready", () => {
   console.log(`✅ ${client.user.tag}`);
 });
 
-// ====== setup ======
+// ===== setup =====
 client.on("messageCreate", async (message) => {
 
   if (message.content === "!setup") {
@@ -67,7 +67,6 @@ client.on("messageCreate", async (message) => {
     await channel.send({ embeds: [embed], components: [row] });
     message.reply("✅ تم إرسال لوحة الإجازات");
   }
-
 });
 
 // ===== Interaction System =====
@@ -118,11 +117,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.showModal(modal);
       }
 
-      // ===== Admin Accept / Reject =====
+      // ===== Admin Accept / Reject Buttons =====
       if (interaction.customId.startsWith("admin_")) {
 
         if (!interaction.member.roles.cache.has(STAFF_ROLE))
           return interaction.reply({ content: "❌ ما عندك صلاحية", ephemeral: true });
+
+        if (!interaction.message.deletable)
+          return interaction.reply({ content: "❌ تم معالجة الطلب مسبقاً", ephemeral: true });
 
         const embed = interaction.message.embeds[0];
         const [userId, type] = embed.footer.text.split("|");
@@ -130,6 +132,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const member = await interaction.guild.members.fetch(userId).catch(() => null);
         if (!member)
           return interaction.reply({ content: "❌ العضو غير موجود", ephemeral: true });
+
+        const reviewChannel = await client.channels.fetch(REVIEW_ROOM).catch(()=>null);
 
         // ===== قبول =====
         if (interaction.customId === "admin_accept") {
@@ -193,7 +197,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
         const [, userId, type] = customId.split("_");
 
-        const member = await interaction.guild.members.fetch(userId).catch(() => null);
+        if (!interaction.message?.deletable === false)
+          return interaction.editReply({ content: "❌ الطلب تمت معالجته" });
+
+        const member = await interaction.guild.members.fetch(userId).catch(()=>null);
         if (!member)
           return interaction.editReply({ content: "❌ العضو غير موجود" });
 
@@ -212,6 +219,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
           member.send(msg).catch(()=>{});
         }
 
+        const reviewChannel = await client.channels.fetch(REVIEW_ROOM).catch(()=>null);
+
+        if (reviewChannel)
+          reviewChannel.send(`✅ <@${userId}> تم قبول طلبه`).catch(()=>{});
+
+        await interaction.message.delete().catch(()=>{});
+
         activeRequests.delete(userId);
 
         return interaction.editReply({ content: "✅ تم القبول" });
@@ -226,6 +240,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
         const member = await interaction.guild.members.fetch(userId).catch(()=>null);
         if (member) member.send(msg).catch(()=>{});
+
+        const reviewChannel = await client.channels.fetch(REVIEW_ROOM).catch(()=>null);
+
+        if (reviewChannel)
+          reviewChannel.send(`❌ <@${userId}> تم رفض طلبه`).catch(()=>{});
+
+        await interaction.message.delete().catch(()=>{});
 
         activeRequests.delete(userId);
 
