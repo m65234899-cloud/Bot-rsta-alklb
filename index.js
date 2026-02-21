@@ -32,7 +32,6 @@ const VACATION_ROLE = "1474887919331180776";
 const RESIGN_ROLE = "1474896675310014536";
 const STAFF_ROLE = "1471881885796798726";
 const IMAGE_URL = "https://cdn.discordapp.com/attachments/1474893806259409008/1474898430072590497/IMG_7702.jpg";
-// =====================
 
 let activeRequests = new Map();
 let savedRoles = new Map();
@@ -117,14 +116,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.showModal(modal);
       }
 
-      // ===== Admin Accept / Reject Buttons =====
-      if (interaction.customId.startsWith("admin_")) {
+      // ===== Admin Buttons =====
+      if (interaction.customId === "admin_accept" || interaction.customId === "admin_reject") {
 
         if (!interaction.member.roles.cache.has(STAFF_ROLE))
           return interaction.reply({ content: "❌ ما عندك صلاحية", ephemeral: true });
-
-        if (!interaction.message.deletable)
-          return interaction.reply({ content: "❌ تم معالجة الطلب مسبقاً", ephemeral: true });
 
         const embed = interaction.message.embeds[0];
         const [userId, type] = embed.footer.text.split("|");
@@ -146,7 +142,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
             new ActionRowBuilder().addComponents(
               new TextInputBuilder()
                 .setCustomId("days")
-                .setLabel("عدد الأيام (رقم فقط)")
+                .setLabel("عدد الأيام")
                 .setStyle(TextInputStyle.Short)
                 .setRequired(false)
             ),
@@ -197,9 +193,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
         const [, userId, type] = customId.split("_");
 
-        if (!interaction.message?.deletable === false)
-          return interaction.editReply({ content: "❌ الطلب تمت معالجته" });
-
         const member = await interaction.guild.members.fetch(userId).catch(()=>null);
         if (!member)
           return interaction.editReply({ content: "❌ العضو غير موجود" });
@@ -215,7 +208,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
           member.send(`${msg}\n📅 ينتهي بتاريخ: ${endDate.toLocaleDateString()}`).catch(()=>{});
 
         } else {
-
           member.send(msg).catch(()=>{});
         }
 
@@ -251,41 +243,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         activeRequests.delete(userId);
 
         return interaction.editReply({ content: "❌ تم الرفض" });
-      }
-
-      // ===== إرسال الطلب للإدارة =====
-      if (["vacation","resign","endvac","extend","absence"].includes(customId)) {
-
-        const reviewChannel = await client.channels.fetch(REVIEW_ROOM).catch(()=>null);
-        if (!reviewChannel)
-          return interaction.editReply({ content: "❌ روم المراجعة غير موجود" });
-
-        const fields = interaction.fields.fields;
-
-        let description = "";
-
-        for (const f of fields.values())
-          description += `**${f.customId}** : ${f.value}\n`;
-
-        const embed = new EmbedBuilder()
-          .setTitle("طلب جديد")
-          .setDescription(description || "لا توجد بيانات")
-          .setFooter({ text: `${interaction.user.id}|${customId}` })
-          .setColor("Blue");
-
-        const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId("admin_accept").setLabel("قبول").setStyle(ButtonStyle.Success),
-          new ButtonBuilder().setCustomId("admin_reject").setLabel("رفض").setStyle(ButtonStyle.Danger)
-        );
-
-        await reviewChannel.send({
-          embeds: [embed],
-          components: [row]
-        });
-
-        activeRequests.set(interaction.user.id, true);
-
-        return interaction.editReply({ content: "✅ تم إرسال طلبك للإدارة" });
       }
     }
 
