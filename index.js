@@ -40,7 +40,7 @@ client.once("ready", () => {
   console.log(`✅ ${client.user.tag}`);
 });
 
-// ===== setup =====
+// ===== لوحة الإجازات =====
 client.on("messageCreate", async (message) => {
 
   if (message.content === "!setup") {
@@ -68,7 +68,7 @@ client.on("messageCreate", async (message) => {
   }
 });
 
-// ===== Interaction System =====
+// ===== التفاعلات =====
 client.on(Events.InteractionCreate, async (interaction) => {
 
   try {
@@ -116,7 +116,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.showModal(modal);
       }
 
-      // ===== Admin Buttons =====
+      // ===== قبول / رفض الإداري =====
       if (interaction.customId === "admin_accept" || interaction.customId === "admin_reject") {
 
         if (!interaction.member.roles.cache.has(STAFF_ROLE))
@@ -205,10 +205,25 @@ client.on(Events.InteractionCreate, async (interaction) => {
           const endDate = new Date();
           endDate.setDate(endDate.getDate() + days);
 
-          member.send(`${msg}\n📅 ينتهي بتاريخ: ${endDate.toLocaleDateString()}`).catch(()=>{});
+          member.send({
+            content: `<@${userId}>`,
+            embeds: [
+              new EmbedBuilder()
+                .setColor("Green")
+                .setDescription(`✅ تم قبول طلبك\n📅 ينتهي بتاريخ: ${endDate.toLocaleDateString()}\n\n${msg}`)
+            ]
+          }).catch(()=>{});
 
         } else {
-          member.send(msg).catch(()=>{});
+
+          member.send({
+            content: `<@${userId}>`,
+            embeds: [
+              new EmbedBuilder()
+                .setColor("Green")
+                .setDescription(`✅ تم قبول طلبك\n\n${msg}`)
+            ]
+          }).catch(()=>{});
         }
 
         const reviewChannel = await client.channels.fetch(REVIEW_ROOM).catch(()=>null);
@@ -231,7 +246,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const msg = interaction.fields.getTextInputValue("msg") || "❌ تم رفض طلبك";
 
         const member = await interaction.guild.members.fetch(userId).catch(()=>null);
-        if (member) member.send(msg).catch(()=>{});
+        if (member) {
+
+          member.send({
+            content: `<@${userId}>`,
+            embeds: [
+              new EmbedBuilder()
+                .setColor("Red")
+                .setDescription(`❌ تم رفض طلبك\n\n${msg}`)
+            ]
+          }).catch(()=>{});
+
+        }
 
         const reviewChannel = await client.channels.fetch(REVIEW_ROOM).catch(()=>null);
 
@@ -243,6 +269,41 @@ client.on(Events.InteractionCreate, async (interaction) => {
         activeRequests.delete(userId);
 
         return interaction.editReply({ content: "❌ تم الرفض" });
+      }
+
+      // ===== إرسال الطلب للإدارة =====
+      if (["vacation","resign","endvac","extend","absence"].includes(customId)) {
+
+        const reviewChannel = await client.channels.fetch(REVIEW_ROOM).catch(()=>null);
+        if (!reviewChannel)
+          return interaction.editReply({ content: "❌ روم المراجعة غير موجود" });
+
+        const fields = interaction.fields.fields;
+
+        let description = "";
+
+        for (const f of fields.values())
+          description += `**${f.customId}** : ${f.value}\n`;
+
+        const embed = new EmbedBuilder()
+          .setTitle("طلب جديد")
+          .setDescription(description || "لا توجد بيانات")
+          .setFooter({ text: `${interaction.user.id}|${customId}` })
+          .setColor("Blue");
+
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId("admin_accept").setLabel("قبول").setStyle(ButtonStyle.Success),
+          new ButtonBuilder().setCustomId("admin_reject").setLabel("رفض").setStyle(ButtonStyle.Danger)
+        );
+
+        await reviewChannel.send({
+          embeds: [embed],
+          components: [row]
+        });
+
+        activeRequests.set(interaction.user.id, true);
+
+        return interaction.editReply({ content: "✅ تم إرسال طلبك للإدارة" });
       }
     }
 
