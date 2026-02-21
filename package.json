@@ -1,0 +1,15 @@
+{
+  "name": "vacation-bot",
+  "version": "1.0.0",
+  "description": "بوت إجازات احترافي لديسكورد",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "Mohammed",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.4.5"
+  }
+}
