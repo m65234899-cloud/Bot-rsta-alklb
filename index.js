@@ -41,7 +41,7 @@ client.once("ready", () => {
   console.log(`✅ ${client.user.tag}`);
 });
 
-// ====== امر setup ======
+// ====== setup ======
 client.on("messageCreate", async (message) => {
 
   if (message.content === "!setup") {
@@ -70,163 +70,206 @@ client.on("messageCreate", async (message) => {
 
 });
 
-// ====== التفاعلات ======
+// ===== Interaction System =====
 client.on(Events.InteractionCreate, async (interaction) => {
 
-  // ====== ازرار التقديم ======
-  if (
-    interaction.isButton() &&
-    ["vacation", "resign", "endvac", "extend", "absence"].includes(interaction.customId)
-  ) {
+  try {
 
-    if (activeRequests.has(interaction.user.id))
-      return interaction.reply({ content: "❌ عندك طلب مفتوح بالفعل", ephemeral: true });
+    // ===== Buttons =====
+    if (interaction.isButton()) {
 
-    const modal = new ModalBuilder()
-      .setCustomId(interaction.customId)
-      .setTitle("استبيان الطلب");
+      if (["vacation","resign","endvac","extend","absence"].includes(interaction.customId)) {
 
-    const input = (id, label) =>
-      new TextInputBuilder()
-        .setCustomId(id)
-        .setLabel(label)
-        .setStyle(TextInputStyle.Short)
-        .setRequired(true);
+        if (activeRequests.has(interaction.user.id))
+          return interaction.reply({ content: "❌ عندك طلب مفتوح بالفعل", ephemeral: true });
 
-    let fields = [];
+        const modal = new ModalBuilder()
+          .setCustomId(interaction.customId)
+          .setTitle("استبيان الطلب");
 
-    if (interaction.customId === "vacation")
-      fields = [input("name", "اسمك"), input("reason", "السبب"), input("days", "عدد الأيام")];
+        const input = (id,label) =>
+          new TextInputBuilder()
+            .setCustomId(id)
+            .setLabel(label)
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
 
-    if (interaction.customId === "resign")
-      fields = [input("name", "اسمك"), input("reason", "سبب الاستقالة"), input("confirm", "هل أنت متأكد؟")];
+        let fields = [];
 
-    if (interaction.customId === "endvac")
-      fields = [input("name", "اسمك"), input("reason", "سبب الإنهاء"), input("confirm", "هل أنت متأكد؟")];
+        if (interaction.customId === "vacation")
+          fields = [input("name","اسمك"), input("reason","السبب"), input("days","عدد الأيام")];
 
-    if (interaction.customId === "extend")
-      fields = [input("name", "اسمك"), input("reason", "سبب التمديد"), input("days", "عدد الأيام")];
+        if (interaction.customId === "resign")
+          fields = [input("name","اسمك"), input("reason","سبب الاستقالة"), input("confirm","هل أنت متأكد؟")];
 
-    if (interaction.customId === "absence")
-      fields = [input("name", "اسمك"), input("reason", "السبب"), input("days", "مدة الغياب")];
+        if (interaction.customId === "endvac")
+          fields = [input("name","اسمك"), input("reason","سبب الإنهاء"), input("confirm","هل أنت متأكد؟")];
 
-    fields.forEach(f => modal.addComponents(new ActionRowBuilder().addComponents(f)));
+        if (interaction.customId === "extend")
+          fields = [input("name","اسمك"), input("reason","سبب التمديد"), input("days","عدد الأيام")];
 
-    return interaction.showModal(modal);
-  }
+        if (interaction.customId === "absence")
+          fields = [input("name","اسمك"), input("reason","السبب"), input("days","مدة الغياب")];
 
-  // ====== ارسال الطلب للادارة (تم إصلاح التعليق) ======
-  if (interaction.isModalSubmit()) {
+        fields.forEach(f =>
+          modal.addComponents(new ActionRowBuilder().addComponents(f))
+        );
 
-    try {
+        return interaction.showModal(modal);
+      }
 
-      if (!interaction.replied && !interaction.deferred)
+      // ===== Admin Accept / Reject =====
+      if (interaction.customId.startsWith("admin_")) {
+
+        if (!interaction.member.roles.cache.has(STAFF_ROLE))
+          return interaction.reply({ content: "❌ ما عندك صلاحية", ephemeral: true });
+
+        const embed = interaction.message.embeds[0];
+        const [userId, type] = embed.footer.text.split("|");
+
+        const member = await interaction.guild.members.fetch(userId).catch(() => null);
+        if (!member)
+          return interaction.reply({ content: "❌ العضو غير موجود", ephemeral: true });
+
+        // ===== قبول =====
+        if (interaction.customId === "admin_accept") {
+
+          const modal = new ModalBuilder()
+            .setCustomId(`accept_${userId}_${type}`)
+            .setTitle("رسالة القبول");
+
+          modal.addComponents(
+            new ActionRowBuilder().addComponents(
+              new TextInputBuilder()
+                .setCustomId("days")
+                .setLabel("عدد الأيام (رقم فقط)")
+                .setStyle(TextInputStyle.Short)
+                .setRequired(false)
+            ),
+            new ActionRowBuilder().addComponents(
+              new TextInputBuilder()
+                .setCustomId("msg")
+                .setLabel("رسالة القبول")
+                .setStyle(TextInputStyle.Paragraph)
+                .setRequired(false)
+            )
+          );
+
+          return interaction.showModal(modal);
+        }
+
+        // ===== رفض =====
+        if (interaction.customId === "admin_reject") {
+
+          const modal = new ModalBuilder()
+            .setCustomId(`reject_${userId}`)
+            .setTitle("رسالة الرفض");
+
+          modal.addComponents(
+            new ActionRowBuilder().addComponents(
+              new TextInputBuilder()
+                .setCustomId("msg")
+                .setLabel("رسالة الرفض")
+                .setStyle(TextInputStyle.Paragraph)
+                .setRequired(false)
+            )
+          );
+
+          return interaction.showModal(modal);
+        }
+      }
+    }
+
+    // ===== Modal Submit =====
+    if (interaction.isModalSubmit()) {
+
+      if (!interaction.deferred && !interaction.replied)
         await interaction.deferReply({ ephemeral: true });
 
-      const reviewChannel = await client.channels.fetch(REVIEW_ROOM).catch(() => null);
+      const customId = interaction.customId;
 
-      if (!reviewChannel)
-        return interaction.editReply({ content: "❌ روم المراجعة غير موجود" });
+      // ===== قبول الطلب =====
+      if (customId.startsWith("accept_")) {
 
-      if (activeRequests.has(interaction.user.id))
-        return interaction.editReply({ content: "❌ لديك طلب قيد المراجعة بالفعل" });
+        const [, userId, type] = customId.split("_");
 
-      const fields = interaction.fields.fields;
+        const member = await interaction.guild.members.fetch(userId).catch(() => null);
+        if (!member)
+          return interaction.editReply({ content: "❌ العضو غير موجود" });
 
-      let description = "";
+        const days = parseInt(interaction.fields.getTextInputValue("days")) || 0;
+        const msg = interaction.fields.getTextInputValue("msg") || "تم قبول طلبك";
 
-      for (const f of fields.values()) {
-        description += `**${f.customId}** : ${f.value}\n`;
+        if (type === "vacation" && days > 0) {
+
+          const endDate = new Date();
+          endDate.setDate(endDate.getDate() + days);
+
+          member.send(`${msg}\n📅 ينتهي بتاريخ: ${endDate.toLocaleDateString()}`).catch(()=>{});
+
+        } else {
+
+          member.send(msg).catch(()=>{});
+        }
+
+        activeRequests.delete(userId);
+
+        return interaction.editReply({ content: "✅ تم القبول" });
       }
 
-      const embed = new EmbedBuilder()
-        .setTitle("طلب جديد")
-        .setDescription(description || "لا توجد بيانات")
-        .setFooter({
-          text: `${interaction.user.id}|${interaction.customId}`
-        })
-        .setColor("Blue");
+      // ===== رفض الطلب =====
+      if (customId.startsWith("reject_")) {
 
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId("admin_accept").setLabel("قبول").setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId("admin_reject").setLabel("رفض").setStyle(ButtonStyle.Danger)
-      );
+        const userId = customId.split("_")[1];
 
-      await reviewChannel.send({
-        embeds: [embed],
-        components: [row]
-      });
+        const msg = interaction.fields.getTextInputValue("msg") || "❌ تم رفض طلبك";
 
-      activeRequests.set(interaction.user.id, true);
+        const member = await interaction.guild.members.fetch(userId).catch(()=>null);
+        if (member) member.send(msg).catch(()=>{});
 
-      return interaction.editReply({
-        content: "✅ تم إرسال طلبك للإدارة"
-      });
+        activeRequests.delete(userId);
 
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
-  // ====== قبول / رفض ======
-  if (interaction.isButton() && interaction.customId.startsWith("admin_")) {
-
-    if (!interaction.member.roles.cache.has(STAFF_ROLE))
-      return interaction.reply({ content: "❌ ما عندك صلاحية", ephemeral: true });
-
-    await interaction.deferReply({ ephemeral: true });
-
-    const embed = interaction.message.embeds[0];
-    const [userId, type] = embed.footer.text.split("|");
-
-    const member = await interaction.guild.members.fetch(userId).catch(() => null);
-    if (!member) return interaction.editReply({ content: "❌ العضو غير موجود" });
-
-    activeRequests.delete(userId);
-
-    if (interaction.customId === "admin_accept") {
-
-      if (type === "vacation") {
-
-        savedRoles.set(userId, member.roles.cache.map(r => r.id));
-
-        await member.roles.set([VACATION_ROLE]);
-
-        const days = parseInt(embed.description.match(/days\*\* : (.*)/)?.[1] || 0);
-
-        const endDate = new Date();
-        endDate.setDate(endDate.getDate() + days);
-
-        member.send(`✅ تم قبول إجازتك\n📅 تنتهي بتاريخ: ${endDate.toLocaleDateString()}`).catch(() => {});
+        return interaction.editReply({ content: "❌ تم الرفض" });
       }
 
-      if (type === "resign") {
-        await member.roles.add(RESIGN_ROLE).catch(() => {});
-        member.send("✅ تم قبول استقالتك").catch(() => {});
-      }
+      // ===== إرسال الطلب للإدارة =====
+      if (["vacation","resign","endvac","extend","absence"].includes(customId)) {
 
-      if (type === "endvac") {
-        const oldRoles = savedRoles.get(userId);
-        if (oldRoles) await member.roles.set(oldRoles).catch(() => {});
-        member.send("✅ تم إنهاء الإجازة وإرجاع رتبك").catch(() => {});
-      }
+        const reviewChannel = await client.channels.fetch(REVIEW_ROOM).catch(()=>null);
+        if (!reviewChannel)
+          return interaction.editReply({ content: "❌ روم المراجعة غير موجود" });
 
-      if (type === "extend") {
-        member.send("✅ تم تمديد الإجازة").catch(() => {});
-      }
+        const fields = interaction.fields.fields;
 
-      if (type === "absence") {
-        member.send("✅ تم قبول عذر عدم التواجد").catch(() => {});
-      }
+        let description = "";
 
-      return interaction.editReply({ content: "✅ تم القبول" });
+        for (const f of fields.values())
+          description += `**${f.customId}** : ${f.value}\n`;
+
+        const embed = new EmbedBuilder()
+          .setTitle("طلب جديد")
+          .setDescription(description || "لا توجد بيانات")
+          .setFooter({ text: `${interaction.user.id}|${customId}` })
+          .setColor("Blue");
+
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId("admin_accept").setLabel("قبول").setStyle(ButtonStyle.Success),
+          new ButtonBuilder().setCustomId("admin_reject").setLabel("رفض").setStyle(ButtonStyle.Danger)
+        );
+
+        await reviewChannel.send({
+          embeds: [embed],
+          components: [row]
+        });
+
+        activeRequests.set(interaction.user.id, true);
+
+        return interaction.editReply({ content: "✅ تم إرسال طلبك للإدارة" });
+      }
     }
 
-    if (interaction.customId === "admin_reject") {
-
-      member.send("❌ تم رفض طلبك").catch(() => {});
-      return interaction.editReply({ content: "❌ تم الرفض" });
-    }
+  } catch (err) {
+    console.error(err);
   }
 
 });
