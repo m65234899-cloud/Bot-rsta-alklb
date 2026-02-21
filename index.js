@@ -11,6 +11,7 @@ const {
   TextInputBuilder,
   TextInputStyle,
   Events,
+  PermissionsBitField
 } = require("discord.js");
 
 const client = new Client({
@@ -18,52 +19,71 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.DirectMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.DirectMessages
   ],
   partials: [Partials.Channel],
 });
 
+// ====== ايدياتك ======
 const VACATION_ROOM = "1472304760093802731";
 const REVIEW_ROOM = "1474893806259409008";
-
 const VACATION_ROLE = "1474887919331180776";
 const RESIGN_ROLE = "1474896675310014536";
-
-const STAFF_ROLE = "1472284690504482896";
-
-const IMAGE_URL =
-  "https://cdn.discordapp.com/attachments/1474893806259409008/1474898430072590497/IMG_7702.jpg";
+const STAFF_ROLE = "1471881885796798726"; // حط ايدي رتبة الادارة
+const IMAGE_URL = "https://cdn.discordapp.com/attachments/1474893806259409008/1474898430072590497/IMG_7702.jpg";
+// =====================
 
 let activeRequests = new Map();
 let savedRoles = new Map();
 
-client.once("ready", async () => {
+client.once("clientReady", () => {
   console.log(`✅ ${client.user.tag}`);
-
-  const channel = await client.channels.fetch(VACATION_ROOM);
-
-  const embed = new EmbedBuilder().setImage(IMAGE_URL).setColor("#2F3136");
-
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId("vacation").setLabel("طلب إجازة").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId("resign").setLabel("طلب استقالة").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId("endvac").setLabel("إنهاء إجازة").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId("extend").setLabel("تمديد إجازة").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId("absence").setLabel("طلب عذر عدم تواجد").setStyle(ButtonStyle.Secondary)
-  );
-
-  await channel.send({ embeds: [embed], components: [row] });
 });
 
+
+// ====== امر setup ======
+client.on("messageCreate", async (message) => {
+  if (message.content === "!setup") {
+
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply("❌ فقط الادارة");
+
+    const channel = await client.channels.fetch(VACATION_ROOM);
+
+    const embed = new EmbedBuilder()
+      .setImage(IMAGE_URL)
+      .setColor("#2F3136");
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId("vacation").setLabel("طلب إجازة").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId("resign").setLabel("طلب استقالة").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId("endvac").setLabel("إنهاء إجازة").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId("extend").setLabel("تمديد إجازة").setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId("absence").setLabel("طلب عذر عدم تواجد").setStyle(ButtonStyle.Secondary)
+    );
+
+    await channel.send({ embeds: [embed], components: [row] });
+    message.reply("✅ تم إرسال لوحة الإجازات");
+  }
+});
+
+
+// ====== التفاعلات ======
 client.on(Events.InteractionCreate, async (interaction) => {
 
-  // فتح المودال
-  if (interaction.isButton() && !interaction.customId.includes("admin")) {
+  // ====== ازرار التقديم ======
+  if (
+    interaction.isButton() &&
+    ["vacation","resign","endvac","extend","absence"].includes(interaction.customId)
+  ) {
 
     if (activeRequests.has(interaction.user.id))
       return interaction.reply({ content: "❌ عندك طلب مفتوح بالفعل", ephemeral: true });
 
-    const modal = new ModalBuilder().setCustomId(interaction.customId).setTitle("استبيان الطلب");
+    const modal = new ModalBuilder()
+      .setCustomId(interaction.customId)
+      .setTitle("استبيان الطلب");
 
     const input = (id, label) =>
       new TextInputBuilder()
@@ -75,27 +95,30 @@ client.on(Events.InteractionCreate, async (interaction) => {
     let fields = [];
 
     if (interaction.customId === "vacation")
-      fields = [input("name", "اسمك"), input("reason", "السبب"), input("days", "عدد الأيام")];
+      fields = [input("name","اسمك"), input("reason","السبب"), input("days","عدد الأيام")];
 
     if (interaction.customId === "resign")
-      fields = [input("name", "اسمك"), input("reason", "سبب الاستقالة"), input("confirm", "هل أنت متأكد؟")];
+      fields = [input("name","اسمك"), input("reason","سبب الاستقالة"), input("confirm","هل أنت متأكد؟")];
 
     if (interaction.customId === "endvac")
-      fields = [input("name", "اسمك"), input("reason", "سبب الإنهاء"), input("confirm", "هل أنت متأكد؟")];
+      fields = [input("name","اسمك"), input("reason","سبب الإنهاء"), input("confirm","هل أنت متأكد؟")];
 
     if (interaction.customId === "extend")
-      fields = [input("name", "اسمك"), input("reason", "سبب التمديد"), input("days", "عدد الأيام")];
+      fields = [input("name","اسمك"), input("reason","سبب التمديد"), input("days","عدد الأيام")];
 
     if (interaction.customId === "absence")
-      fields = [input("name", "اسمك"), input("reason", "السبب"), input("days", "مدة الغياب")];
+      fields = [input("name","اسمك"), input("reason","السبب"), input("days","مدة الغياب")];
 
-    fields.forEach((f) => modal.addComponents(new ActionRowBuilder().addComponents(f)));
+    fields.forEach(f => modal.addComponents(new ActionRowBuilder().addComponents(f)));
 
-    await interaction.showModal(modal);
+    return interaction.showModal(modal);
   }
 
-  // إرسال الطلب للإدارة
+
+  // ====== ارسال الطلب للادارة ======
   if (interaction.isModalSubmit()) {
+
+    await interaction.deferReply({ ephemeral: true });
 
     activeRequests.set(interaction.user.id, true);
 
@@ -105,7 +128,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       .setTitle("طلب جديد")
       .setDescription(
         Object.values(interaction.fields.fields)
-          .map((f) => `**${f.customId}** : ${f.value}`)
+          .map(f => `**${f.customId}** : ${f.value}`)
           .join("\n")
       )
       .setFooter({ text: `${interaction.user.id}|${interaction.customId}` })
@@ -118,14 +141,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     await reviewChannel.send({ embeds: [embed], components: [row] });
 
-    await interaction.reply({ content: "✅ تم إرسال طلبك", ephemeral: true });
+    return interaction.editReply({ content: "✅ تم إرسال طلبك للإدارة" });
   }
 
-  // قبول / رفض الإدارة
-  if (interaction.isButton() && interaction.customId.includes("admin")) {
+
+  // ====== قبول / رفض ======
+  if (interaction.isButton() && interaction.customId.startsWith("admin_")) {
 
     if (!interaction.member.roles.cache.has(STAFF_ROLE))
       return interaction.reply({ content: "❌ ما عندك صلاحية", ephemeral: true });
+
+    await interaction.deferReply({ ephemeral: true });
 
     const embed = interaction.message.embeds[0];
     const [userId, type] = embed.footer.text.split("|");
@@ -145,8 +171,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const endDate = new Date();
         endDate.setDate(endDate.getDate() + days);
 
-        member.send(`✅ تم قبول إجازتك
-📅 تنتهي بتاريخ: ${endDate.toLocaleDateString()}`);
+        member.send(`✅ تم قبول إجازتك\n📅 تنتهي بتاريخ: ${endDate.toLocaleDateString()}`);
       }
 
       if (type === "resign") {
@@ -168,12 +193,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
         member.send("✅ تم قبول عذر عدم التواجد");
       }
 
-      await interaction.reply({ content: "✅ تم القبول", ephemeral: true });
+      await interaction.editReply({ content: "✅ تم القبول" });
     }
 
     if (interaction.customId === "admin_reject") {
       member.send("❌ تم رفض طلبك");
-      await interaction.reply({ content: "❌ تم الرفض", ephemeral: true });
+      await interaction.editReply({ content: "❌ تم الرفض" });
     }
   }
 });
