@@ -157,29 +157,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
           return interaction.showModal(modal);
         }
-/* ---------- !يوزر ---------- */
-
-if (content === "!يوزر") {
-
-  // نتأكد إنه الأمر داخل سيرفر
-  if (!message.guild) return;
-
-  // نجيب كل الأعضاء
-  await message.guild.members.fetch();
-
-  // فلترة: نستبعد البوتات
-  const members = message.guild.members.cache
-    .filter(member => !member.user.bot);
-
-  if (members.size === 0) {
-    return message.reply("ما فيه أعضاء أختار منهم 😅");
-  }
-
-  // اختيار عشوائي
-  const randomMember = members.random();
-
-  message.reply(`🎉 اليوزر العشوائي هو: ${randomMember}`);
-}
         // ===== رفض =====
         if (interaction.customId === "admin_reject") {
 
