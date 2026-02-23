@@ -318,4 +318,3 @@ if (["vacation","resign","endvac","extend","absence"].includes(customId)) {
 });
 
 client.login(process.env.TOKEN);
-client.login(process.env.TOKEN);
