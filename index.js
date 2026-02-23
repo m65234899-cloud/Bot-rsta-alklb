@@ -269,47 +269,48 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
         return interaction.editReply({ content: "❌ تم الرفض" });
       }
+// ===== إرسال الطلب للإدارة =====
+if (["vacation","resign","endvac","extend","absence"].includes(customId)) {
 
-      // ===== إرسال الطلب للإدارة =====
-      if (["vacation","resign","endvac","extend","absence"].includes(customId)) {
+  const reviewChannel = await client.channels.fetch(REVIEW_ROOM).catch(()=>null);
+  if (!reviewChannel)
+    return interaction.editReply({ content: "❌ روم المراجعة غير موجود" });
 
-        const reviewChannel = await client.channels.fetch(REVIEW_ROOM).catch(()=>null);
-        if (!reviewChannel)
-          return interaction.editReply({ content: "❌ روم المراجعة غير موجود" });
+  const requestNames = {
+    vacation: "طلب إجازة",
+    resign: "طلب استقالة",
+    endvac: "إنهاء إجازة",
+    extend: "تمديد إجازة",
+    absence: "طلب عذر عدم تواجد"
+  };
 
-        const fields = interaction.fields.fields;
+  const fields = interaction.fields.fields;
 
-        let description = "";
+  let description = "";
 
-        for (const f of fields.values())
-          description += `**${f.customId}** : ${f.value}\n`;
+  for (const f of fields.values())
+    description += `**${f.customId}** : ${f.value}\n`;
 
-        const embed = new EmbedBuilder()
-          .setTitle("طلب جديد")
-          .setDescription(description || "لا توجد بيانات")
-          .setFooter({ text: `${interaction.user.id}|${customId}` })
-          .setColor("Blue");
+  const embed = new EmbedBuilder()
+    .setTitle(requestNames[customId] || "طلب جديد")
+    .setDescription(description || "لا توجد بيانات")
+    .setFooter({ text: `${interaction.user.id}|${customId}` })
+    .setColor("Blue");
 
-        const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId("admin_accept").setLabel("قبول").setStyle(ButtonStyle.Success),
-          new ButtonBuilder().setCustomId("admin_reject").setLabel("رفض").setStyle(ButtonStyle.Danger)
-        );
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId("admin_accept").setLabel("قبول").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId("admin_reject").setLabel("رفض").setStyle(ButtonStyle.Danger)
+  );
 
-        await reviewChannel.send({
-          embeds: [embed],
-          components: [row]
-        });
+  await reviewChannel.send({
+    embeds: [embed],
+    components: [row]
+  });
 
-        activeRequests.set(interaction.user.id, true);
+  activeRequests.set(interaction.user.id, true);
 
-        return interaction.editReply({ content: "✅ تم إرسال طلبك للإدارة" });
-      }
-    }
-
-  } catch (err) {
-    console.error(err);
-  }
-
+  return interaction.editReply({ content: "✅ تم إرسال طلبك للإدارة" });
+}
 });
 
 client.login(process.env.TOKEN);
