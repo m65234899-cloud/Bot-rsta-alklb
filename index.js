@@ -312,5 +312,10 @@ if (["vacation","resign","endvac","extend","absence"].includes(customId)) {
 
   return interaction.editReply({ content: "✅ تم إرسال طلبك للإدارة" });
 }
+  } catch (err) {
+    console.error(err);
+  }
 });
+
+client.login(process.env.TOKEN);
 client.login(process.env.TOKEN);
