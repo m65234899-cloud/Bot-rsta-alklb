@@ -269,7 +269,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
         return interaction.editReply({ content: "❌ تم الرفض" });
       }
-// ===== إرسال الطلب للإدارة =====
+      // ===== إرسال الطلب للإدارة =====
 if (["vacation","resign","endvac","extend","absence"].includes(customId)) {
 
   const reviewChannel = await client.channels.fetch(REVIEW_ROOM).catch(()=>null);
@@ -284,12 +284,13 @@ if (["vacation","resign","endvac","extend","absence"].includes(customId)) {
     absence: "طلب عذر عدم تواجد"
   };
 
-  const fields = interaction.fields.fields;
+  const fields = interaction.fields?.fields || new Map();
 
   let description = "";
 
-  for (const f of fields.values())
+  for (const f of fields.values()) {
     description += `**${f.customId}** : ${f.value}\n`;
+  }
 
   const embed = new EmbedBuilder()
     .setTitle(requestNames[customId] || "طلب جديد")
