@@ -101,7 +101,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           fields = [input("name","اسمك"), input("reason","سبب الاستقالة"), input("confirm","هل أنت متأكد؟")];
 
         if (interaction.customId === "endvac")
-          fields = [input("name","اسمك"), input("reason","سبب الإنهاء"), input("confirm","هل أنت متأكد؟")];
+          fields = [input("name","اسمك"), input("reason","سبب الإنهاء"), input("confirm","المدة التي قضيتها")];
 
         if (interaction.customId === "extend")
           fields = [input("name","اسمك"), input("reason","سبب التمديد"), input("days","عدد الأيام")];
