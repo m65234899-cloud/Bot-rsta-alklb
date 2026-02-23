@@ -31,7 +31,7 @@ const REVIEW_ROOM = "1474893806259409008";
 const VACATION_ROLE = "1474887919331180776";
 const RESIGN_ROLE = "1474896675310014536";
 const STAFF_ROLE = "1471881885796798726";
-const IMAGE_URL = "https://cdn.discordapp.com/attachments/1474893806259409008/1474898430072590497/IMG_7702.jpg";
+const IMAGE_URL = "https://cdn.discordapp.com/attachments/1471928643545469010/1475300913760440482/InShot_20260223_041244533.gif?ex=699cfc8b&is=699bab0b&hm=8c80f37ae10a8265a10e423fa83677faf4d59c099132b3a9c4f7ba31dc826c50&";
 
 let activeRequests = new Map();
 let savedRoles = new Map();
