@@ -269,7 +269,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
         return interaction.editReply({ content: "❌ تم الرفض" });
       }
-      // ===== إرسال الطلب للإدارة =====
+     // ===== إرسال الطلب للإدارة =====
 if (["vacation","resign","endvac","extend","absence"].includes(customId)) {
 
   const reviewChannel = await client.channels.fetch(REVIEW_ROOM).catch(()=>null);
@@ -312,6 +312,5 @@ if (["vacation","resign","endvac","extend","absence"].includes(customId)) {
 
   return interaction.editReply({ content: "✅ تم إرسال طلبك للإدارة" });
 }
-});
 
 client.login(process.env.TOKEN);
